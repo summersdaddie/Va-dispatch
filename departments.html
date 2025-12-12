@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virginia Police Dispatch Tracker - Departments</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .hero-bg {
+            background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
+        }
+        .department-card {
+            transition: all 0.3s ease;
+        }
+        .department-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: scale(1.02);
+        }
+        .chart-container {
+            height: 300px;
+        }
+        .map-container {
+            height: 400px;
+        }
+        .contact-btn {
+            transition: all 0.2s ease;
+        }
+        .contact-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-xl font-bold text-gray-900">VA Police Dispatch</h1>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="index.html" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Active Calls</a>
+                        <a href="history.html" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Call History</a>
+                        <a href="departments.html" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-md text-sm font-medium">Departments</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-gray-600 hover:text-gray-900">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+                <a href="index.html" class="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Active Calls</a>
+                <a href="history.html" class="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Call History</a>
+                <a href="departments.html" class="bg-blue-100 text-blue-700 block px-3 py-2 rounded-md text-base font-medium">Departments</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-bg pt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold text-white sm:text-5xl md:text-6xl">
+                    Police Departments
+                    <span class="block text-blue-300">Directory & Statistics</span>
+                </h1>
+                <p class="mt-3 max-w-md mx-auto text-base text-gray-300 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
+                    Comprehensive directory of Virginia law enforcement agencies with performance metrics, contact information, and jurisdictional boundaries.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="stat-card bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">Total Agencies</h3>
+                    <p class="text-3xl font-bold text-gray-900 mt-2" id="total-agencies">173</p>
+                    <p class="text-sm text-gray-600 mt-1">Sheriffs & Police Depts</p>
+                </div>
+                <div class="stat-card bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">Sheriff's Offices</h3>
+                    <p class="text-3xl font-bold text-amber-600 mt-2" id="sheriff-offices">133</p>
+                    <p class="text-sm text-gray-600 mt-1">County Agencies</p>
+                </div>
+                <div class="stat-card bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">Police Departments</h3>
+                    <p class="text-3xl font-bold text-blue-600 mt-2" id="police-departments">40</p>
+                    <p class="text-sm text-gray-600 mt-1">City & Municipal</p>
+                </div>
+                <div class="stat-card bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">Coverage</h3>
+                    <p class="text-3xl font-bold text-green-600 mt-2">100%</p>
+                    <p class="text-sm text-gray-600 mt-1">Virginia Counties & Cities</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Directory -->
+    <div class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Filters -->
+            <div class="mb-8 bg-white rounded-lg shadow p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Agencies</label>
+                        <input type="text" id="department-search" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search by name, county, or city...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Agency Type</label>
+                        <select id="type-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Types</option>
+                            <option value="sheriff">Sheriff\'s Offices</option>
+                            <option value="police">Police Departments</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Region</label>
+                        <select id="region-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Regions</option>
+                            <option value="northern">Northern Virginia</option>
+                            <option value="central">Central Virginia</option>
+                            <option value="eastern">Eastern Virginia</option>
+                            <option value="western">Western Virginia</option>
+                            <option value="southern">Southern Virginia</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Agency Size</label>
+                        <select id="size-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Sizes</option>
+                            <option value="large">Large (500+ officers)</option>
+                            <option value="medium">Medium (100-500 officers)</option>
+                            <option value="small">Small (<100 officers)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                        <select id="sort-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="name">Agency Name</option>
+                            <option value="type">Agency Type</option>
+                            <option value="size">Agency Size</option>
+                            <option value="county">County/City</option>
+                            <option value="response-time">Response Time</option>
+                            <option value="call-volume">Call Volume</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button id="apply-filters" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Apply Filters</button>
+                </div>
+            </div>
+
+            <!-- Map View -->
+            <div class="mb-8 bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Department Locations</h3>
+                <div id="departments-map" class="map-container rounded-lg"></div>
+            </div>
+
+            <!-- Department Cards -->
+            <div id="departments-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Department cards will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Department Detail Modal -->
+    <div id="department-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-screen overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 id="modal-department-name" class="text-2xl font-bold text-gray-900"></h2>
+                        <p id="modal-department-location" class="text-gray-600 mt-1"></p>
+                    </div>
+                    <button id="close-modal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Department Stats -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="text-sm font-medium text-gray-500">Sworn Officers</h4>
+                        <p id="modal-officer-count" class="text-2xl font-bold text-blue-600 mt-1"></p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="text-sm font-medium text-gray-500">Avg Response Time</h4>
+                        <p id="modal-response-time" class="text-2xl font-bold text-green-600 mt-1"></p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="text-sm font-medium text-gray-500">Annual Calls</h4>
+                        <p id="modal-call-volume" class="text-2xl font-bold text-purple-600 mt-1"></p>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Call Volume Trends</h4>
+                        <div id="call-volume-chart" class="chart-container"></div>
+                    </div>
+                    <div>
+                        <h4 class="text-lg font-semibold text-gray-900 mb-4">Response Time Distribution</h4>
+                        <div id="response-time-chart" class="chart-container"></div>
+                    </div>
+                </div>
+
+                <!-- Contact Information -->
+                <div class="bg-gray-50 p-6 rounded-lg">
+                    <h4 class="text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">Emergency</p>
+                            <p id="modal-emergency-phone" class="font-medium text-gray-900"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Non-Emergency</p>
+                            <p id="modal-non-emergency-phone" class="font-medium text-gray-900"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Address</p>
+                            <p id="modal-address" class="font-medium text-gray-900"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Website</p>
+                            <p id="modal-website" class="font-medium text-blue-600 hover:underline"></p>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex flex-wrap gap-3">
+                        <button id="call-emergency" class="contact-btn px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+                            Call Emergency
+                        </button>
+                        <button id="call-non-emergency" class="contact-btn px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            Call Non-Emergency
+                        </button>
+                        <button id="visit-website" class="contact-btn px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">
+                            Visit Website
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-sm">&copy; 2025 Virginia Police Dispatch Tracker. Public safety information for community awareness.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+    <script>
+        // Comprehensive Virginia Law Enforcement Data
+        const virginiaLawEnforcementAgencies = [
+            {
+                id: 'fairfax',
+                name: 'Fairfax County Police Department',
+                location: 'Fairfax County, VA',
+                region: 'northern',
+                size: 'large',
+                officers: 1400,
+                responseTime: 6.2,
+                callVolume: 125000,
+                address: '12099 Government Center Pkwy, Fairfax, VA 22035',
+                emergencyPhone: '(703) 691-2131',
+                nonEmergencyPhone: '(703) 691-2131',
+                website: 'https://www.fairfaxcounty.gov/police',
+                coordinates: [38.8462, -77.3064],
+                description: 'Serving Fairfax County with professional law enforcement since 1940.'
+            },
+            {
+                id: 'richmond',
+                name: 'Richmond Police Department',
+                location: 'Richmond, VA',
+                region: 'central',
+                size: 'large',
+                officers: 750,
+                responseTime: 7.8,
+                callVolume: 85000,
+                address: '200 W Grace St, Richmond, VA 23220',
+                emergencyPhone: '(804) 646-5100',
+                nonEmergencyPhone: '(804) 646-5100',
+                website: 'https://www.rva.gov/police',
+                coordinates: [37.5407, -77.4360],
+                description: 'Protecting Virginia\'s capital city with dedicated officers and community programs.'
+            },
+            {
+                id: 'virginia-beach',
+                name: 'Virginia Beach Police Department',
+                location: 'Virginia Beach, VA',
+                region: 'eastern',
+                size: 'large',
+                officers: 800,
+                responseTime: 8.1,
+                callVolume: 92000,
+                address: '2509 Princess Anne Rd, Virginia Beach, VA 23456',
+                emergencyPhone: '(757) 385-4141',
+                nonEmergencyPhone: '(757) 385-4141',
+                website: 'https://www.vbgov.com/government/departments/police',
+                coordinates: [36.8529, -75.9780],
+                description: 'Serving Virginia\'s largest city with comprehensive law enforcement services.'
+            },
+            {
+                id: 'norfolk',
+                name: 'Norfolk Police Department',
+                location: 'Norfolk, VA',
+                region: 'eastern',
+                size: 'medium',
+                officers: 450,
+                responseTime: 9.2,
+                callVolume: 65000,
+                address: '100 E Fairfax Ave, Norfolk, VA 23503',
+                emergencyPhone: '(757) 664-3275',
+                nonEmergencyPhone: '(757) 664-3275',
+                website: 'https://www.norfolk.gov/police',
+                coordinates: [36.8508, -76.2859],
+                description: 'Protecting Norfolk\'s diverse communities with professional policing.'
+            },
+            {
+                id: 'chesapeake',
+                name: 'Chesapeake Police Department',
+                location: 'Chesapeake, VA',
+                region: 'eastern',
+                size: 'medium',
+                officers: 380,
+                responseTime: 8.7,
+                callVolume: 48000,
+                address: '304 Albemarle Dr, Chesapeake, VA 23322',
+                emergencyPhone: '(757) 382-6161',
+                nonEmergencyPhone: '(757) 382-6161',
+                website: 'https://www.cityofchesapeake.net/police',
+                coordinates: [36.7682, -76.2875],
+                description: 'Dedicated to serving Chesapeake\'s growing community with excellence.'
+            },
+            {
+                id: 'arlington',
+                name: 'Arlington County Police Department',
+                location: 'Arlington County, VA',
+                region: 'northern',
+                size: 'medium',
+                officers: 320,
+                responseTime: 5.9,
+                callVolume: 42000,
+                address: '1425 N Courthouse Rd, Arlington, VA 22201',
+                emergencyPhone: '(703) 558-2222',
+                nonEmergencyPhone: '(703) 558-2222',
+                website: 'https://police.arlingtonva.us',
+                coordinates: [38.8904, -77.0840],
+                description: 'Providing professional law enforcement in the heart of Northern Virginia.'
+            }
+        ];
+
+        let filteredDepartments = [...departmentData];
+        let map;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDepartmentsPage();
+        });
+
+        function initializeDepartmentsPage() {
+            setupDepartmentsEventListeners();
+            renderDepartments();
+            initializeDepartmentsMap();
+            animateStats();
+        }
+
+        function setupDepartmentsEventListeners() {
+            // Mobile menu toggle
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Filter functionality
+            document.getElementById('apply-filters').addEventListener('click', applyDepartmentFilters);
+            document.getElementById('department-search').addEventListener('input', applyDepartmentFilters);
+            document.getElementById('type-filter').addEventListener('change', applyDepartmentFilters);
+            document.getElementById('region-filter').addEventListener('change', applyDepartmentFilters);
+            document.getElementById('size-filter').addEventListener('change', applyDepartmentFilters);
+            document.getElementById('sort-filter').addEventListener('change', applyDepartmentFilters);
+
+            // Modal functionality
+            document.getElementById('close-modal').addEventListener('click', closeModal);
+            document.getElementById('department-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'department-modal') closeModal();
+            });
+        }
+
+        function renderDepartments() {
+            const grid = document.getElementById('departments-grid');
+            grid.innerHTML = '';
+
+            filteredDepartments.forEach((dept, index) => {
+                const card = createDepartmentCard(dept, index);
+                grid.appendChild(card);
+            });
+
+            // Animate cards
+            anime({
+                targets: '.department-card',
+                translateY: [50, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(100),
+                duration: 600,
+                easing: 'easeOutQuart'
+            });
+        }
+
+        function createDepartmentCard(dept, index) {
+            const card = document.createElement('div');
+            card.className = 'department-card bg-white rounded-lg shadow-md p-6 cursor-pointer';
+            card.onclick = () => openDepartmentModal(dept);
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">${dept.name}</h3>
+                        <p class="text-sm text-gray-600">${dept.location}</p>
+                        <p class="text-xs text-gray-500">${dept.county}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeClass(dept.type)}">
+                            ${dept.type.toUpperCase()}
+                        </span>
+                        <div class="mt-1">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSizeClass(dept.size)}">
+                                ${dept.size.toUpperCase()}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <p class="text-gray-700 text-sm mb-4">${dept.description}</p>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="text-center">
+                        <p class="text-2xl font-bold text-blue-600">${dept.officers}</p>
+                        <p class="text-xs text-gray-500">Officers</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="text-2xl font-bold text-green-600">${dept.responseTime}</p>
+                        <p class="text-xs text-gray-500">Min Response</p>
+                    </div>
+                </div>
+                
+                <div class="border-t pt-4">
+                    <div class="flex justify-between items-center text-sm">
+                        <div>
+                            <span class="text-gray-500">Annual Calls:</span>
+                            <span class="font-medium text-gray-900">${dept.callVolume.toLocaleString()}</span>
+                        </div>
+                        <button class="text-blue-600 hover:text-blue-800 font-medium">
+                            View Details →
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function getTypeClass(type) {
+            switch (type) {
+                case 'sheriff': return 'bg-amber-100 text-amber-800';
+                case 'police': return 'bg-blue-100 text-blue-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function getSizeClass(size) {
+            switch (size) {
+                case 'large': return 'bg-red-100 text-red-800';
+                case 'medium': return 'bg-orange-100 text-orange-800';
+                case 'small': return 'bg-green-100 text-green-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function applyDepartmentFilters() {
+            const searchTerm = document.getElementById('department-search').value.toLowerCase();
+            const type = document.getElementById('type-filter').value;
+            const region = document.getElementById('region-filter').value;
+            const size = document.getElementById('size-filter').value;
+            const sortBy = document.getElementById('sort-filter').value;
+
+            // Filter departments
+            filteredDepartments = virginiaLawEnforcementAgencies.filter(dept => {
+                const matchesSearch = !searchTerm || 
+                    dept.name.toLowerCase().includes(searchTerm) ||
+                    dept.location.toLowerCase().includes(searchTerm) ||
+                    dept.county.toLowerCase().includes(searchTerm);
+
+                const matchesType = !type || dept.type === type;
+                const matchesRegion = !region || dept.region === region;
+                const matchesSize = !size || dept.size === size;
+
+                return matchesSearch && matchesType && matchesRegion && matchesSize;
+            });
+
+            // Sort departments
+            filteredDepartments.sort((a, b) => {
+                switch (sortBy) {
+                    case 'type':
+                        return a.type.localeCompare(b.type);
+                    case 'county':
+                        return a.county.localeCompare(b.county);
+                    case 'size':
+                        const sizeOrder = { large: 3, medium: 2, small: 1 };
+                        return sizeOrder[b.size] - sizeOrder[a.size];
+                    case 'response-time':
+                        return a.responseTime - b.responseTime;
+                    case 'call-volume':
+                        return b.callVolume - a.callVolume;
+                    case 'name':
+                    default:
+                        return a.name.localeCompare(b.name);
+                }
+            });
+
+            renderDepartments();
+            updateMapMarkers();
+        }
+
+        function initializeDepartmentsMap() {
+            map = L.map('departments-map').setView([37.5407, -77.4360], 7);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            updateMapMarkers();
+        }
+
+        function updateMapMarkers() {
+            // Clear existing markers
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Add markers for filtered departments
+            filteredDepartments.forEach(dept => {
+                const marker = L.circleMarker(dept.coordinates, {
+                    radius: Math.sqrt(dept.officers) / 5 + 5,
+                    fillColor: getSizeColor(dept.size),
+                    color: '#fff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+
+                const popupContent = `
+                    <div class="p-2">
+                        <h3 class="font-semibold text-sm">${dept.name}</h3>
+                        <p class="text-xs text-gray-600">${dept.location}</p>
+                        <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <span class="text-gray-500">Officers:</span>
+                                <span class="font-medium">${dept.officers}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Response:</span>
+                                <span class="font-medium">${dept.responseTime}min</span>
+                            </div>
+                        </div>
+                        <button onclick="openDepartmentModal(departmentData.find(d => d.id === '${dept.id}'))" class="mt-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                            View Details
+                        </button>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+            });
+        }
+
+        function getSizeColor(size) {
+            switch (size) {
+                case 'large': return '#dc2626';
+                case 'medium': return '#f59e0b';
+                case 'small': return '#059669';
+                default: return '#6b7280';
+            }
+        }
+
+        function openDepartmentModal(dept) {
+            document.getElementById('modal-department-name').textContent = dept.name;
+            document.getElementById('modal-department-location').textContent = `${dept.location} • ${dept.county}`;
+            document.getElementById('modal-officer-count').textContent = dept.officers;
+            document.getElementById('modal-response-time').textContent = dept.responseTime + ' min';
+            document.getElementById('modal-call-volume').textContent = dept.callVolume.toLocaleString();
+            document.getElementById('modal-emergency-phone').textContent = dept.phone;
+            document.getElementById('modal-non-emergency-phone').textContent = dept.phone;
+            document.getElementById('modal-address').textContent = dept.address;
+            document.getElementById('modal-website').textContent = dept.website;
+            document.getElementById('modal-website').href = dept.website;
+
+            // Setup contact buttons
+            document.getElementById('call-emergency').onclick = () => window.open(`tel:${dept.phone.replace(/\D/g, '')}`);
+            document.getElementById('call-non-emergency').onclick = () => window.open(`tel:${dept.phone.replace(/\D/g, '')}`);
+            document.getElementById('visit-website').onclick = () => window.open(dept.website, '_blank');
+
+            // Initialize charts
+            initializeCharts(dept);
+
+            document.getElementById('department-modal').classList.remove('hidden');
+            
+            // Animate modal
+            anime({
+                targets: '#department-modal .bg-white',
+                scale: [0.8, 1],
+                opacity: [0, 1],
+                duration: 300,
+                easing: 'easeOutBack'
+            });
+        }
+
+        function closeModal() {
+            anime({
+                targets: '#department-modal .bg-white',
+                scale: [1, 0.8],
+                opacity: [1, 0],
+                duration: 200,
+                easing: 'easeInQuart',
+                complete: () => {
+                    document.getElementById('department-modal').classList.add('hidden');
+                }
+            });
+        }
+
+        function initializeCharts(dept) {
+            // Call Volume Chart
+            const callVolumeChart = echarts.init(document.getElementById('call-volume-chart'));
+            const callVolumeOption = {
+                tooltip: {
+                    trigger: 'axis'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [{
+                    data: generateMonthlyData(dept.callVolume),
+                    type: 'line',
+                    smooth: true,
+                    itemStyle: {
+                        color: '#3b82f6'
+                    },
+                    areaStyle: {
+                        color: 'rgba(59, 130, 246, 0.1)'
+                    }
+                }]
+            };
+            callVolumeChart.setOption(callVolumeOption);
+
+            // Response Time Chart
+            const responseTimeChart = echarts.init(document.getElementById('response-time-chart'));
+            const responseTimeData = generateResponseTimeData(dept.responseTime);
+            const responseTimeOption = {
+                tooltip: {
+                    trigger: 'item'
+                },
+                series: [{
+                    type: 'pie',
+                    radius: '70%',
+                    data: responseTimeData,
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }]
+            };
+            responseTimeChart.setOption(responseTimeOption);
+        }
+
+        function generateMonthlyData(annualTotal) {
+            const monthlyAvg = annualTotal / 12;
+            return Array.from({length: 12}, () => 
+                Math.floor(monthlyAvg + (Math.random() - 0.5) * monthlyAvg * 0.4)
+            );
+        }
+
+        function generateResponseTimeData(avgResponseTime) {
+            return [
+                { value: 35, name: '<5 min', itemStyle: { color: '#10b981' } },
+                { value: 40, name: '5-10 min', itemStyle: { color: '#3b82f6' } },
+                { value: 20, name: '10-15 min', itemStyle: { color: '#f59e0b' } },
+                { value: 5, name: '>15 min', itemStyle: { color: '#ef4444' } }
+            ];
+        }
+
+        function animateStats() {
+            anime({
+                targets: '.stat-card',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(100),
+                duration: 600,
+                easing: 'easeOutQuart'
+            });
+        }
+
+        // Make function globally available for popup buttons
+        window.openDepartmentModal = openDepartmentModal;
+    </script>
+</body>
+</html>

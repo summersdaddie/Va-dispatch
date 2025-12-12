@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virginia Police Dispatch Tracker - Call History</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .hero-bg {
+            background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
+        }
+        .call-card {
+            transition: all 0.3s ease;
+        }
+        .call-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+        }
+        .priority-high {
+            border-left: 4px solid #dc2626;
+        }
+        .priority-medium {
+            border-left: 4px solid #f59e0b;
+        }
+        .priority-low {
+            border-left: 4px solid #059669;
+        }
+        .search-input {
+            transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            transform: scale(1.02);
+        }
+        .filter-chip {
+            transition: all 0.2s ease;
+        }
+        .filter-chip:hover {
+            transform: scale(1.05);
+        }
+        .date-picker {
+            position: relative;
+        }
+        .calendar-popup {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm fixed w-full top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-xl font-bold text-gray-900">VA Police Dispatch</h1>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="index.html" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Active Calls</a>
+                        <a href="history.html" class="bg-blue-100 text-blue-700 px-3 py-2 rounded-md text-sm font-medium">Call History</a>
+                        <a href="departments.html" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">Departments</a>
+                    </div>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobile-menu-btn" class="text-gray-600 hover:text-gray-900">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="md:hidden hidden">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+                <a href="index.html" class="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Active Calls</a>
+                <a href="history.html" class="bg-blue-100 text-blue-700 block px-3 py-2 rounded-md text-base font-medium">Call History</a>
+                <a href="departments.html" class="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium">Departments</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-bg pt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="text-center">
+                <h1 class="text-4xl font-bold text-white sm:text-5xl md:text-6xl">
+                    Call History
+                    <span class="block text-blue-300">Search & Analysis</span>
+                </h1>
+                <p class="mt-3 max-w-md mx-auto text-base text-gray-300 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
+                    Search comprehensive historical dispatch data, analyze trends, and generate reports across Virginia law enforcement agencies.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Interface -->
+    <div class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <!-- Search Bar -->
+                <div class="mb-6">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                        <input type="text" id="search-input" class="search-input block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Search by address, incident type, case number, or description...">
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                        <div class="date-picker">
+                            <input type="text" id="date-range" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Select date range" readonly>
+                            <div id="calendar-popup" class="calendar-popup hidden">
+                                <div class="p-4">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <button id="prev-month" class="p-2 hover:bg-gray-100 rounded">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                            </svg>
+                                        </button>
+                                        <h3 id="current-month" class="text-lg font-semibold"></h3>
+                                        <button id="next-month" class="p-2 hover:bg-gray-100 rounded">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div id="calendar-grid" class="grid grid-cols-7 gap-1">
+                                        <!-- Calendar days will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Department</label>
+                        <select id="department-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Departments</option>
+                            <option value="fairfax-police">Fairfax County Police</option>
+                            <option value="richmond-police">Richmond Police</option>
+                            <option value="virginia-beach-police">Virginia Beach Police</option>
+                            <option value="norfolk-police">Norfolk Police</option>
+                            <option value="chesapeake-police">Chesapeake Police</option>
+                            <option value="arlington-police">Arlington County Police</option>
+                            <option value="arlington-sheriff">Arlington County Sheriff</option>
+                            <option value="fairfax-sheriff">Fairfax County Sheriff</option>
+                            <option value="albemarle-sheriff">Albemarle County Sheriff</option>
+                            <option value="accomack-sheriff">Accomack County Sheriff</option>
+                            <option value="bedford-sheriff">Bedford County Sheriff</option>
+                            <option value="alexandria-police">Alexandria Police</option>
+                            <option value="hampton-police">Hampton Police</option>
+                            <option value="newport-news-police">Newport News Police</option>
+                            <option value="roanoke-police">Roanoke Police</option>
+                            <option value="lynchburg-police">Lynchburg Police</option>
+                            <option value="harrisonburg-police">Harrisonburg Police</option>
+                            <option value="winchester-police">Winchester Police</option>
+                            <option value="fredericksburg-police">Fredericksburg Police</option>
+                            <option value="danville-police">Danville Police</option>
+                            <option value="bristol-police">Bristol Police</option>
+                            <option value="salem-police">Salem Police</option>
+                            <option value="staunton-police">Staunton Police</option>
+                            <option value="waynesboro-police">Waynesboro Police</option>
+                            <option value="martinsville-police">Martinsville Police</option>
+                            <option value="hopewell-police">Hopewell Police</option>
+                            <option value="emporia-police">Emporia Police</option>
+                            <option value="colonial-heights-police">Colonial Heights Police</option>
+                            <option value="petersburg-police">Petersburg Police</option>
+                            <option value="portsmouth-police">Portsmouth Police</option>
+                            <option value="suffolk-police">Suffolk Police</option>
+                            <option value="falls-church-police">Falls Church Police</option>
+                            <option value="covington-police">Covington Police</option>
+                            <option value="buena-vista-police">Buena Vista Police</option>
+                            <option value="radford-police">Radford Police</option>
+                            <option value="alexandria-sheriff">Alexandria Sheriff</option>
+                            <option value="chesapeake-sheriff">Chesapeake Sheriff</option>
+                            <option value="hampton-sheriff">Hampton Sheriff</option>
+                            <option value="newport-news-sheriff">Newport News Sheriff</option>
+                            <option value="norfolk-sheriff">Norfolk Sheriff</option>
+                            <option value="portsmouth-sheriff">Portsmouth Sheriff</option>
+                            <option value="richmond-sheriff">Richmond Sheriff</option>
+                            <option value="virginia-beach-sheriff">Virginia Beach Sheriff</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Call Type</label>
+                        <select id="call-type-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Types</option>
+                            <option value="disturbance">Disturbance</option>
+                            <option value="traffic">Traffic Incident</option>
+                            <option value="theft">Theft/Robbery</option>
+                            <option value="domestic">Domestic Dispute</option>
+                            <option value="suspicious">Suspicious Activity</option>
+                            <option value="medical">Medical Emergency</option>
+                            <option value="assault">Assault</option>
+                            <option value="burglary">Burglary</option>
+                            <option value="drugs">Drug Related</option>
+                            <option value="dui">DUI/DWI</option>
+                            <option value="fraud">Fraud</option>
+                            <option value="vandalism">Vandalism</option>
+                            <option value="warrant">Warrant Service</option>
+                            <option value="noise">Noise Complaint</option>
+                            <option value="animal">Animal Related</option>
+                            <option value="fire">Fire Related</option>
+                            <option value="mental-health">Mental Health</option>
+                            <option value="missing-person">Missing Person</option>
+                            <option value="weapons">Weapons Call</option>
+                            <option value="juvenile">Juvenile Related</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                        <select id="priority-filter" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Priorities</option>
+                            <option value="high">High Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="low">Low Priority</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Filter Chips -->
+                <div id="filter-chips" class="mb-6 flex flex-wrap gap-2">
+                    <!-- Filter chips will be added dynamically -->
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div class="flex flex-wrap gap-2">
+                        <button id="search-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            Search
+                        </button>
+                        <button id="clear-filters" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Clear All
+                        </button>
+                        <button id="save-search" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Save Search
+                        </button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="export-csv" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Export CSV
+                        </button>
+                        <button id="export-pdf" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                            Export PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Results Header -->
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">Search Results</h2>
+                    <p id="results-count" class="text-gray-600 mt-1">Showing 0 calls</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <select id="sort-by" class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="date-desc">Newest First</option>
+                        <option value="date-asc">Oldest First</option>
+                        <option value="priority">Priority Level</option>
+                        <option value="department">Department</option>
+                        <option value="type">Call Type</option>
+                    </select>
+                    <div class="flex border border-gray-300 rounded-md">
+                        <button id="list-view" class="px-3 py-2 bg-blue-600 text-white rounded-l-md">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+                            </svg>
+                        </button>
+                        <button id="grid-view" class="px-3 py-2 text-gray-600 hover:bg-gray-50 rounded-r-md">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">Total Calls</h3>
+                    <p id="total-calls" class="text-2xl font-bold text-gray-900 mt-2">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">High Priority</h3>
+                    <p id="high-priority-calls" class="text-2xl font-bold text-red-600 mt-2">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">Avg Response Time</h3>
+                    <p id="avg-response-time" class="text-2xl font-bold text-blue-600 mt-2">0 min</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-sm font-medium text-gray-500">Clearance Rate</h3>
+                    <p id="clearance-rate" class="text-2xl font-bold text-green-600 mt-2">0%</p>
+                </div>
+            </div>
+
+            <!-- Results List -->
+            <div id="results-container" class="space-y-4">
+                <!-- Results will be populated by JavaScript -->
+            </div>
+
+            <!-- Pagination -->
+            <div id="pagination" class="hidden mt-8 flex justify-center items-center space-x-2">
+                <button id="prev-page" class="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Previous
+                </button>
+                <div id="page-numbers" class="flex space-x-1">
+                    <!-- Page numbers will be populated by JavaScript -->
+                </div>
+                <button id="next-page" class="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-sm">&copy; 2025 Virginia Police Dispatch Tracker. Public safety information for community awareness.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+    <script>
+        // History page specific functionality
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let filteredResults = [];
+        let savedSearches = [];
+
+        // Mock historical data
+        const mockHistoricalCalls = generateHistoricalData();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeHistoryPage();
+        });
+
+        function generateHistoricalData() {
+            const calls = [];
+            const departments = ['fairfax', 'richmond', 'virginia-beach', 'norfolk', 'chesapeake', 'arlington'];
+            const types = ['disturbance', 'traffic', 'theft', 'domestic', 'suspicious', 'medical'];
+            const priorities = ['high', 'medium', 'low'];
+            const statuses = ['resolved', 'pending', 'closed'];
+            
+            for (let i = 0; i < 500; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() - Math.floor(Math.random() * 365));
+                
+                calls.push({
+                    id: `VA-2025-${String(i + 1).padStart(6, '0')}`,
+                    department: departments[Math.floor(Math.random() * departments.length)],
+                    type: types[Math.floor(Math.random() * types.length)],
+                    priority: priorities[Math.floor(Math.random() * priorities.length)],
+                    location: `${Math.floor(Math.random() * 9999)} ${['Main St', 'Oak Ave', 'Park Blvd', 'First St'][Math.floor(Math.random() * 4)]}, ${['Fairfax', 'Richmond', 'Virginia Beach', 'Norfolk'][Math.floor(Math.random() * 4)]}, VA`,
+                    description: `Historical incident ${i + 1}: ${['Domestic dispute reported', 'Traffic accident with injuries', 'Theft from vehicle', 'Suspicious person investigation', 'Medical emergency response'][Math.floor(Math.random() * 5)]}`,
+                    dispatchTime: date.toISOString(),
+                    responseTime: Math.floor(Math.random() * 20) + 3,
+                    status: statuses[Math.floor(Math.random() * statuses.length)],
+                    resolution: Math.random() > 0.3 ? 'Resolved' : 'Under Investigation'
+                });
+            }
+            
+            return calls.sort((a, b) => new Date(b.dispatchTime) - new Date(a.dispatchTime));
+        }
+
+        function initializeHistoryPage() {
+            setupHistoryEventListeners();
+            performSearch();
+        }
+
+        function setupHistoryEventListeners() {
+            // Mobile menu toggle
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // Search functionality
+            document.getElementById('search-btn').addEventListener('click', performSearch);
+            document.getElementById('search-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') performSearch();
+            });
+
+            // Filter changes
+            ['department-filter', 'call-type-filter', 'priority-filter'].forEach(id => {
+                document.getElementById(id).addEventListener('change', performSearch);
+            });
+
+            // Sort change
+            document.getElementById('sort-by').addEventListener('change', performSearch);
+
+            // Clear filters
+            document.getElementById('clear-filters').addEventListener('click', clearAllFilters);
+
+            // Export functionality
+            document.getElementById('export-csv').addEventListener('click', exportToCSV);
+            document.getElementById('export-pdf').addEventListener('click', exportToPDF);
+
+            // Save search
+            document.getElementById('save-search').addEventListener('click', saveCurrentSearch);
+
+            // Pagination
+            document.getElementById('prev-page').addEventListener('click', () => changePage(-1));
+            document.getElementById('next-page').addEventListener('click', () => changePage(1));
+        }
+
+        function performSearch() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const department = document.getElementById('department-filter').value;
+            const callType = document.getElementById('call-type-filter').value;
+            const priority = document.getElementById('priority-filter').value;
+            const sortBy = document.getElementById('sort-by').value;
+
+            // Filter results
+            filteredResults = mockHistoricalCalls.filter(call => {
+                const matchesSearch = !searchTerm || 
+                    call.id.toLowerCase().includes(searchTerm) ||
+                    call.location.toLowerCase().includes(searchTerm) ||
+                    call.description.toLowerCase().includes(searchTerm) ||
+                    call.type.toLowerCase().includes(searchTerm);
+
+                const matchesDepartment = !department || call.department === department;
+                const matchesType = !callType || call.type === callType;
+                const matchesPriority = !priority || call.priority === priority;
+
+                return matchesSearch && matchesDepartment && matchesType && matchesPriority;
+            });
+
+            // Sort results
+            filteredResults.sort((a, b) => {
+                switch (sortBy) {
+                    case 'date-asc':
+                        return new Date(a.dispatchTime) - new Date(b.dispatchTime);
+                    case 'priority':
+                        const priorityOrder = { high: 3, medium: 2, low: 1 };
+                        return priorityOrder[b.priority] - priorityOrder[a.priority];
+                    case 'department':
+                        return a.department.localeCompare(b.department);
+                    case 'type':
+                        return a.type.localeCompare(b.type);
+                    case 'date-desc':
+                    default:
+                        return new Date(b.dispatchTime) - new Date(a.dispatchTime);
+                }
+            });
+
+            currentPage = 1;
+            displayResults();
+            updateStatistics();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('results-container');
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageResults = filteredResults.slice(startIndex, endIndex);
+
+            container.innerHTML = '';
+
+            if (pageResults.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No results found</h3>
+                        <p class="mt-1 text-sm text-gray-500">Try adjusting your search criteria.</p>
+                    </div>
+                `;
+                document.getElementById('pagination').classList.add('hidden');
+                return;
+            }
+
+            pageResults.forEach((call, index) => {
+                const callCard = createHistoricalCallCard(call, startIndex + index);
+                container.appendChild(callCard);
+            });
+
+            // Animate cards
+            anime({
+                targets: '.call-card',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                delay: anime.stagger(50),
+                duration: 400,
+                easing: 'easeOutQuart'
+            });
+
+            updatePagination();
+        }
+
+        function createHistoricalCallCard(call, index) {
+            const card = document.createElement('div');
+            card.className = `call-card bg-white rounded-lg shadow-md p-6 priority-${call.priority}`;
+
+            const dispatchTime = new Date(call.dispatchTime);
+            const formattedDate = dispatchTime.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            const formattedTime = dispatchTime.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+            });
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityClass(call.priority)}">
+                            ${call.priority.toUpperCase()}
+                        </span>
+                        <span class="ml-2 text-sm text-gray-500 mono">${call.id}</span>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm font-medium text-gray-900">${formattedDate}</div>
+                        <div class="text-sm text-gray-500">${formattedTime}</div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">${formatDepartmentName(call.department)}</h3>
+                    <p class="text-sm text-gray-600 mb-2">${call.location}</p>
+                    <p class="text-gray-800 mb-2">${call.description}</p>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            ${call.type}
+                        </span>
+                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium ${call.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${call.status}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                    <div>
+                        <span class="text-gray-500">Response Time:</span>
+                        <span class="font-medium text-gray-900 ml-1">${call.responseTime} min</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">Status:</span>
+                        <span class="font-medium text-gray-900 ml-1">${call.resolution}</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-500">Case ID:</span>
+                        <span class="font-medium text-gray-900 mono ml-1">${call.id}</span>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function formatDepartmentName(code) {
+            const names = {
+                'fairfax': 'Fairfax County Police',
+                'richmond': 'Richmond Police',
+                'virginia-beach': 'Virginia Beach Police',
+                'norfolk': 'Norfolk Police',
+                'chesapeake': 'Chesapeake Police',
+                'arlington': 'Arlington County Police'
+            };
+            return names[code] || code;
+        }
+
+        function getPriorityClass(priority) {
+            switch (priority) {
+                case 'high': return 'bg-red-100 text-red-800';
+                case 'medium': return 'bg-orange-100 text-orange-800';
+                case 'low': return 'bg-green-100 text-green-800';
+                default: return 'bg-gray-100 text-gray-800';
+            }
+        }
+
+        function updateStatistics() {
+            const total = filteredResults.length;
+            const highPriority = filteredResults.filter(call => call.priority === 'high').length;
+            const avgResponseTime = total > 0 ? 
+                Math.round(filteredResults.reduce((sum, call) => sum + call.responseTime, 0) / total) : 0;
+            const clearanceRate = total > 0 ? 
+                Math.round((filteredResults.filter(call => call.status === 'resolved').length / total) * 100) : 0;
+
+            document.getElementById('total-calls').textContent = total;
+            document.getElementById('high-priority-calls').textContent = highPriority;
+            document.getElementById('avg-response-time').textContent = avgResponseTime + ' min';
+            document.getElementById('clearance-rate').textContent = clearanceRate + '%';
+
+            document.getElementById('results-count').textContent = `Showing ${total} calls`;
+
+            // Animate stats
+            anime({
+                targets: '#total-calls, #high-priority-calls, #avg-response-time, #clearance-rate',
+                scale: [1.2, 1],
+                duration: 400,
+                easing: 'easeOutBack'
+            });
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.classList.add('hidden');
+                return;
+            }
+
+            pagination.classList.remove('hidden');
+            
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+
+            const pageNumbers = document.getElementById('page-numbers');
+            pageNumbers.innerHTML = '';
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    const button = document.createElement('button');
+                    button.className = `px-3 py-2 text-sm font-medium rounded-md ${
+                        i === currentPage 
+                            ? 'bg-blue-600 text-white' 
+                            : 'text-gray-700 hover:bg-gray-50'
+                    }`;
+                    button.textContent = i;
+                    button.onclick = () => goToPage(i);
+                    pageNumbers.appendChild(button);
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    const span = document.createElement('span');
+                    span.className = 'px-3 py-2 text-sm text-gray-500';
+                    span.textContent = '...';
+                    pageNumbers.appendChild(span);
+                }
+            }
+        }
+
+        function changePage(direction) {
+            const totalPages = Math.ceil(filteredResults.length / itemsPerPage);
+            const newPage = currentPage + direction;
+            
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                displayResults();
+            }
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            displayResults();
+        }
+
+        function clearAllFilters() {
+            document.getElementById('search-input').value = '';
+            document.getElementById('department-filter').value = '';
+            document.getElementById('call-type-filter').value = '';
+            document.getElementById('priority-filter').value = '';
+            document.getElementById('date-range').value = '';
+            performSearch();
+        }
+
+        function exportToCSV() {
+            if (filteredResults.length === 0) {
+                alert('No data to export');
+                return;
+            }
+
+            const headers = ['Case ID', 'Date', 'Time', 'Department', 'Type', 'Priority', 'Location', 'Description', 'Response Time', 'Status'];
+            const csvContent = [
+                headers.join(','),
+                ...filteredResults.map(call => [
+                    call.id,
+                    new Date(call.dispatchTime).toLocaleDateString(),
+                    new Date(call.dispatchTime).toLocaleTimeString(),
+                    formatDepartmentName(call.department),
+                    call.type,
+                    call.priority,
+                    `"${call.location}"`,
+                    `"${call.description}"`,
+                    call.responseTime + ' min',
+                    call.status
+                ].join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `police-calls-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function exportToPDF() {
+            alert('PDF export functionality would be implemented with a PDF library like jsPDF in a production environment.');
+        }
+
+        function saveCurrentSearch() {
+            const searchName = prompt('Enter a name for this search:');
+            if (searchName) {
+                savedSearches.push({
+                    name: searchName,
+                    filters: {
+                        search: document.getElementById('search-input').value,
+                        department: document.getElementById('department-filter').value,
+                        type: document.getElementById('call-type-filter').value,
+                        priority: document.getElementById('priority-filter').value
+                    }
+                });
+                alert(`Search "${searchName}" saved successfully!`);
+            }
+        }
+    </script>
+</body>
+</html>
